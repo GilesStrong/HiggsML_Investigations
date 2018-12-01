@@ -9,7 +9,7 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
 
 from hepml_tools.transformations.hep_proc import *
-from hepml_tools.general.pre_proc import getPreProcPipes
+from hepml_tools.general.pre_proc import get_pre_proc_pipes
 
 
 def import_data(data_path=Path("../Data/"),
@@ -163,25 +163,25 @@ def prepare_sample(in_data, mode, input_pipe, norm_weights, N, feats, data_path)
         kf = KFold(n_splits=N, shuffle=True)
         folds = kf.split(in_data)
 
-    for i, (train, test) in enumerate(folds):
-        print("Saving fold:", i, "of", len(test), "events")
-        save_fold(in_data.iloc[test], i, input_pipe, out_file, norm_weights, mode, feats)
+    for i, (_, fold) in enumerate(folds):
+        print("Saving fold:", i, "of", len(fold), "events")
+        save_fold(in_data.iloc[fold].copy(), i, input_pipe, out_file, norm_weights, mode, feats)
 
 
-def run_data_import(data_path, rotate, cartesian, mode, val_size, seed, nFolds):
+def run_data_import(data_path, rotate, cartesian, mode, val_size, seed, n_folds):
     '''Run through all the stages to save the data into files for training, validation, and testing'''
     # Get Data
     data = import_data(data_path, rotate, cartesian, mode, val_size, seed)
 
     # Standardise and normalise
-    input_pipe, _ = getPreProcPipes(normIn=True)
+    input_pipe, _ = get_pre_proc_pipes(norm_in=True)
     input_pipe.fit(data['train'][data['feats']].values.astype('float32'))
     with open(data_path + 'input_pipe.pkl', 'wb') as fout:
         pickle.dump(input_pipe, fout)
 
-    prepare_sample(data['train'], 'train', input_pipe, True, nFolds, data['feats'], data_path)
-    prepare_sample(data['val'], 'val', input_pipe, False, nFolds, data['feats'], data_path)
-    prepare_sample(data['test'], 'testing', input_pipe, False, nFolds, data['feats'], data_path)
+    prepare_sample(data['train'], 'train', input_pipe, True, n_folds, data['feats'], data_path)
+    prepare_sample(data['val'], 'val', input_pipe, False, n_folds, data['feats'], data_path)
+    prepare_sample(data['test'], 'testing', input_pipe, False, n_folds, data['feats'], data_path)
 
     with open(data_path + 'feats.pkl', 'wb') as fout:
         pickle.dump(data['feats'], fout)
@@ -195,7 +195,8 @@ if __name__ == '__main__':
     parser.add_option("-m", "--mode", dest="mode", action="store", default="OpenData", help="Using open data or Kaggle data")
     parser.add_option("-v", "--val_size", dest="val_size", action="store", default=0.2, help="Fraction of data to use for validation")
     parser.add_option("-s", "--seed", dest="seed", action="store", default=1337, help="Seed for train/val split")
-    parser.add_option("-n", "--nFolds", dest="nFolds", action="store", default=10, help="Nmber of folds to split data")
+    parser.add_option("-n", "--n_folds", dest="n_folds", action="store", default=10, help="Nmber of folds to split data")
     opts, args = parser.parse_args()
 
-    run_data_import(opts.data_path, opts.rotate, opts.cartesian, opts.mode, opts.val_size, opts.seed, opts.nFolds)
+    run_data_import(opts.data_path, opts.rotate, opts.cartesian, opts.mode, opts.val_size, opts.seed, opts.n_folds)
+    

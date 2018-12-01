@@ -1,7 +1,10 @@
+import pandas as pd
+
 from hepml_tools.general.fold_train import *
-from hepml_tools.general.models import getModel
+from hepml_tools.general.models import get_model
 from hepml_tools.general.fold_yielder import *
 from hepml_tools.general.activations import *
+from hepml_tools.general.ensemble_functions import assemble_ensemble
 
 
 class RotationReflectionFold(FoldYielder):
@@ -18,7 +21,7 @@ class RotationReflectionFold(FoldYielder):
             self.aug_mult = self.rot_mult
             
         elif not self.rotate_aug and self.reflect_aug:
-            self.reflectAxes = ['_px', '_py', '_pz']
+            self.reflect_axes = ['_px', '_py', '_pz']
             self.aug_mult = 8
             
         elif not self.rotate_aug and not self.reflect_aug:
@@ -28,10 +31,10 @@ class RotationReflectionFold(FoldYielder):
             self.aug_mult = 0
             print('No augmentation specified!')
             input_pipe = None
-            self.getTestFold = self.getFold
+            self.get_test_fold = self.get_fold
             
         else:  # Reflect and rotate
-            self.reflectAxes = ['_px', '_pz']
+            self.reflect_axes = ['_px', '_pz']
             self.aug_mult = self.rot_mult * 4
             
         self.train_time_aug = train_time_aug
@@ -39,7 +42,7 @@ class RotationReflectionFold(FoldYielder):
         self.input_pipe = input_pipe
         
         if not isinstance(datafile, type(None)):
-            self.addSource(datafile)
+            self.add_source(datafile)
     
     def rotate(self, in_data, vectors):
         for vector in vectors:
@@ -59,7 +62,7 @@ class RotationReflectionFold(FoldYielder):
     
     def reflect(self, in_data, vectors):
         for vector in vectors:
-            for coord in self.reflectAxes:
+            for coord in self.reflect_axes:
                 try:
                     cut = (in_data['aug' + coord] == 1)
                     if 'jet_leading' in vector:
@@ -70,7 +73,7 @@ class RotationReflectionFold(FoldYielder):
                 except KeyError:
                     pass
             
-    def getFold(self, index, datafile=None):
+    def get_fold(self, index, datafile=None):
         if isinstance(datafile, type(None)):
             datafile = self.source
             
@@ -88,9 +91,9 @@ class RotationReflectionFold(FoldYielder):
                     'weights': weights}
 
         if isinstance(self.input_pipe, type(None)):
-            inputs = pandas.DataFrame(np.array(datafile['fold_' + index + '/inputs']), columns=self.header)
+            inputs = pd.DataFrame(np.array(datafile['fold_' + index + '/inputs']), columns=self.header)
         else:
-            inputs = pandas.DataFrame(self.input_pipe.inverse_transform(np.array(datafile['fold_' + index + '/inputs'])), columns=self.header)            
+            inputs = pd.DataFrame(self.input_pipe.inverse_transform(np.array(datafile['fold_' + index + '/inputs'])), columns=self.header)            
         
         vectors = [x[:-3] for x in inputs.columns if '_px' in x]
         if self.rotate_aug:
@@ -98,7 +101,7 @@ class RotationReflectionFold(FoldYielder):
             self.rotate(inputs, vectors)
             
         if self.reflect_aug:
-            for coord in self.reflectAxes:
+            for coord in self.reflect_axes:
                 inputs['aug' + coord] = np.random.randint(0, 2, size=len(inputs))
             self.reflect(inputs, vectors)
             
@@ -111,7 +114,7 @@ class RotationReflectionFold(FoldYielder):
                 'targets': targets,
                 'weights': weights}
     
-    def getTestFold(self, index, aug_index, datafile=None):
+    def get_test_fold(self, index, aug_index, datafile=None):
         if aug_index >= self.aug_mult:
             print("Invalid augmentation index passed", aug_index)
             return -1
@@ -128,25 +131,25 @@ class RotationReflectionFold(FoldYielder):
             targets = np.array(datafile['fold_' + index + '/targets'])
             
         if isinstance(self.input_pipe, type(None)):
-            inputs = pandas.DataFrame(np.array(datafile['fold_' + index + '/inputs']), columns=self.header)
+            inputs = pd.DataFrame(np.array(datafile['fold_' + index + '/inputs']), columns=self.header)
         else:
-            inputs = pandas.DataFrame(self.input_pipe.inverse_transform(np.array(datafile['fold_' + index + '/inputs'])), columns=self.header)            
+            inputs = pd.DataFrame(self.input_pipe.inverse_transform(np.array(datafile['fold_' + index + '/inputs'])), columns=self.header)            
             
         if self.reflect_aug and self.rotate_aug:
             rotIndex = aug_index % self.rot_mult
-            refIndex = '{0:02b}'.format(int(aug_index / 4))
+            ref_index = '{0:02b}'.format(int(aug_index / 4))
             vectors = [x[:-3] for x in inputs.columns if '_px' in x]
             inputs['aug_angle'] = np.linspace(0, 2 * np.pi, (self.rot_mult) + 1)[rotIndex]
-            for i, coord in enumerate(self.reflectAxes):
-                inputs['aug' + coord] = int(refIndex[i])
+            for i, coord in enumerate(self.reflect_axes):
+                inputs['aug' + coord] = int(ref_index[i])
             self.rotate(inputs, vectors)
             self.reflect(inputs, vectors)
             
         elif self.reflect_aug:
-            refIndex = '{0:03b}'.format(int(aug_index))
+            ref_index = '{0:03b}'.format(int(aug_index))
             vectors = [x[:-3] for x in inputs.columns if '_px' in x]
-            for i, coord in enumerate(self.reflectAxes):
-                inputs['aug' + coord] = int(refIndex[i])
+            for i, coord in enumerate(self.reflect_axes):
+                inputs['aug' + coord] = int(ref_index[i])
             self.reflect(inputs, vectors)
             
         else:

@@ -43,7 +43,7 @@ def score_test_data(test_data, cut):
     return public_ams, private_ams
 
 
-def export_test_to_csv(cut, name, data_path=data_path):
+def export_test_to_csv(cut, name, data_path=DATA_PATH):
     test_data = h5py.File(data_path + 'testing.hdf5', "r+")
 
     data = pandas.DataFrame()
