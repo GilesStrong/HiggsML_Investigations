@@ -195,7 +195,7 @@ if __name__ == '__main__':
     parser.add_option("-m", "--mode", dest="mode", action="store", default="OpenData", help="Using open data or Kaggle data")
     parser.add_option("-v", "--val_size", dest="val_size", action="store", default=0.2, help="Fraction of data to use for validation")
     parser.add_option("-s", "--seed", dest="seed", action="store", default=1337, help="Seed for train/val split")
-    parser.add_option("-n", "--n_folds", dest="n_folds", action="store", default=10, help="Nmber of folds to split data")
+    parser.add_option("-n", "--n_folds", dest="n_folds", action="store", default=10, help="Number of folds to split data")
     opts, args = parser.parse_args()
 
     run_data_import(opts.data_path, opts.rotate, opts.cartesian, opts.mode, opts.val_size, opts.seed, opts.n_folds)
