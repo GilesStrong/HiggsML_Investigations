@@ -189,7 +189,7 @@ def run_data_import(data_path, rotate, cartesian, mode, val_size, seed, n_folds)
 
 if __name__ == '__main__':
     parser = optparse.OptionParser(usage=__doc__)
-    parser.add_option("-d", "--data_path", dest="data_path", action="store", default="./Data/", help="Data folder location")
+    parser.add_option("-d", "--data_path", dest="data_path", action="store", default="./data/", help="Data folder location")
     parser.add_option("-r", "--rotate", dest="rotate", action="store", default=False, help="Rotate events to have common alignment")
     parser.add_option("-c", "--cartesian", dest="cartesian", action="store", default=True, help="Convert to Cartesian system")
     parser.add_option("-m", "--mode", dest="mode", action="store", default="OpenData", help="Using open data or Kaggle data")
