@@ -57,10 +57,15 @@ def import_data(data_path=Path("../Data/"),
 
 def rotate_event(in_data):
     '''Rotate event in phi such that lepton is at phi == 0'''
-    in_data['PRI_tau_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_tau_phi'])
-    in_data['PRI_jet_leading_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_jet_leading_phi'])
-    in_data['PRI_jet_subleading_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_jet_subleading_phi'])
-    in_data['PRI_met_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_met_phi'])
+    # in_data['PRI_tau_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_tau_phi'])
+    # in_data['PRI_jet_leading_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_jet_leading_phi'])
+    # in_data['PRI_jet_subleading_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_jet_subleading_phi'])
+    # in_data['PRI_met_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_met_phi'])
+    # in_data['PRI_lep_phi'] = 0
+    in_data['PRI_tau_phi'] = in_data.apply(lambda row: delta_phi(row['PRI_lep_phi'], row['PRI_tau_phi']), axis=1)
+    in_data['PRI_jet_leading_phi'] = in_data.apply(lambda row: delta_phi(row['PRI_lep_phi'], row['PRI_jet_leading_phi']), axis=1)
+    in_data['PRI_jet_subleading_phi'] = in_data.apply(lambda row: delta_phi(row['PRI_lep_phi'], row['PRI_jet_subleading_phi']), axis=1)
+    in_data['PRI_met_phi'] = in_data.apply(lambda row: delta_phi(row['PRI_lep_phi'], row['PRI_met_phi']), axis=1)
     in_data['PRI_lep_phi'] = 0
 
 
@@ -73,7 +78,7 @@ def z_flip_event(in_data):
 
 
 def x_flip_event(in_data):
-    '''Flip event in x-axis such that (subleading) (leptoninc) tau is in positive x-direction'''
+    '''Flip event in x-axis such that tau is in positive x-direction'''
     cut = (in_data.PRI_tau_phi < 0)
     
     for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
