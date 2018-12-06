@@ -20,7 +20,7 @@ def str2bool(v):
 
 
 def import_data(data_path=Path("../Data/"),
-                rotate=False, flip_x=False, flip_z=False, cartesian=True,
+                rotate=False, flip_y=False, flip_z=False, cartesian=True,
                 mode='OpenData',
                 val_size=0.2, seed=None):
     '''Import and split data from CSV(s)'''
@@ -44,8 +44,8 @@ def import_data(data_path=Path("../Data/"),
         test = pandas.read_csv(data_path + 'test.csv')
         test.rename(index=str, columns={'PRI_met': 'PRI_met_pt'}, inplace=True)
 
-    convert_data(training_data, rotate, flip_x, flip_z, cartesian)
-    convert_data(test, rotate, flip_x, flip_z, cartesian)
+    convert_data(training_data, rotate, flip_y, flip_z, cartesian)
+    convert_data(test, rotate, flip_y, flip_z, cartesian)
 
     training_data['gen_target'] = 0
     training_data.loc[training_data.Label == 's', 'gen_target'] = 1
@@ -77,35 +77,23 @@ def rotate_event(in_data):
     in_data['PRI_lep_phi'] = 0
 
 
-def z_flip_event(in_data, cartesian=False):
+def z_flip_event(in_data):
     '''Flip event in z-axis such that primary lepton is in positive z-direction'''
-    if cartesian:
-        cut = (in_data.PRI_lep_pz < 0)
-        
-        for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
-            in_data.loc[cut, particle + '_pz'] = -in_data.loc[cut, particle + '_pz']
-    else:
-        cut = (in_data.PRI_lep_eta < 0)
-        
-        for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
-            in_data.loc[cut, particle + '_eta'] = -in_data.loc[cut, particle + '_eta'] 
-
-
-def x_flip_event(in_data, cartesian=False):
-    '''Flip event in x-axis such that tau is in positive x|y-direction'''
-    if cartesian:
-        cut = (in_data.PRI_tau_py < 0)
+    cut = (in_data.PRI_lep_eta < 0)
     
-        for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
-            in_data.loc[cut, particle + '_py'] = -in_data.loc[cut, particle + '_py'] 
-    else:
-        cut = (in_data.PRI_tau_phi < 0)
-        
-        for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
-            in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
+    for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
+        in_data.loc[cut, particle + '_eta'] = -in_data.loc[cut, particle + '_eta'] 
+
+
+def x_flip_event(in_data):
+    '''Flip event in x-axis such that tau has a higher py than the lepton'''
+    cut = (in_data.PRI_tau_phi < 0)
+    
+    for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
+        in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
     
 
-def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=False):
+def convert_data(in_data, rotate=False, flip_y=False, flip_z=False, cartesian=False):
     '''Pass data through conversions and drop uneeded columns'''
     in_data.replace([np.inf, -np.inf], np.nan, inplace=True)
     in_data.fillna(-999.0, inplace=True)
@@ -114,7 +102,15 @@ def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=Fa
     if rotate:
         print('Setting lepton to phi = 0')
         rotate_event(in_data)
-    
+        
+        if flip_y:
+            print('Setting tau to positve y')
+            x_flip_event(in_data)
+
+    if flip_z:
+        print('Setting lepton positive z')
+        z_flip_event(in_data)
+            
     if cartesian:
         print("Converting to Cartesian coordinates")
         move_to_cartesian(in_data, 'PRI_tau', drop=True)
@@ -124,13 +120,6 @@ def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=Fa
         move_to_cartesian(in_data, 'PRI_met', z=False)
         
         in_data.drop(columns=["PRI_met_phi"], inplace=True)
-
-    if flip_z:
-        print('Setting lepton positive z')
-        z_flip_event(in_data, cartesian)
-    if flip_x:
-        print('Setting tau to positve x')
-        x_flip_event(in_data, cartesian)
         
     if rotate and not cartesian:
         in_data.drop(columns=["PRI_lep_phi"], inplace=True)
@@ -200,10 +189,10 @@ def prepare_sample(in_data, mode, input_pipe, norm_weights, N, feats, data_path)
         save_fold(in_data.iloc[fold].copy(), i, input_pipe, out_file, norm_weights, mode, feats)
 
 
-def run_data_import(data_path, rotate, flip_x, flip_z, cartesian, mode, val_size, seed, n_folds):
+def run_data_import(data_path, rotate, flip_y, flip_z, cartesian, mode, val_size, seed, n_folds):
     '''Run through all the stages to save the data into files for training, validation, and testing'''
     # Get Data
-    data = import_data(data_path, rotate, flip_x, flip_z, cartesian, mode, val_size, seed)
+    data = import_data(data_path, rotate, flip_y, flip_z, cartesian, mode, val_size, seed)
 
     # Standardise and normalise
     input_pipe, _ = get_pre_proc_pipes(norm_in=True)
@@ -223,7 +212,7 @@ if __name__ == '__main__':
     parser = optparse.OptionParser(usage=__doc__)
     parser.add_option("-d", "--data_path", dest="data_path", action="store", default="./data/", help="Data folder location")
     parser.add_option("-r", "--rotate", dest="rotate", action="store", default=False, help="Rotate events in phi to have common alignment")
-    parser.add_option("-x", "--flipx", dest="flip_x", action="store", default=False, help="Flip events in x to have common alignment")
+    parser.add_option("-y", "--flipy", dest="flip_y", action="store", default=False, help="Flip events in y to have common alignment")
     parser.add_option("-z", "--flipz", dest="flip_z", action="store", default=False, help="Flip events in z to have common alignment")
     parser.add_option("-c", "--cartesian", dest="cartesian", action="store", default=True, help="Convert to Cartesian system")
     parser.add_option("-m", "--mode", dest="mode", action="store", default="OpenData", help="Using open data or Kaggle data")
@@ -233,6 +222,6 @@ if __name__ == '__main__':
     opts, args = parser.parse_args()
 
     run_data_import(opts.data_path,
-                    str2bool(opts.rotate), str2bool(opts.flip_x), str2bool(opts.flip_z), str2bool(opts.cartesian),
+                    str2bool(opts.rotate), str2bool(opts.flip_y), str2bool(opts.flip_z), str2bool(opts.cartesian),
                     opts.mode, opts.val_size, opts.seed, opts.n_folds)
     
