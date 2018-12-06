@@ -77,20 +77,32 @@ def rotate_event(in_data):
     in_data['PRI_lep_phi'] = 0
 
 
-def z_flip_event(in_data):
+def z_flip_event(in_data, cartesian=False):
     '''Flip event in z-axis such that primary lepton is in positive z-direction'''
-    cut = (in_data.PRI_lep_eta < 0)
-    
-    for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
-        in_data.loc[cut, particle + '_eta'] = -in_data.loc[cut, particle + '_eta'] 
+    if cartesian:
+        cut = (in_data.PRI_lep_pz < 0)
+        
+        for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
+            in_data.loc[cut, particle + '_pz'] = -in_data.loc[cut, particle + '_pz']
+    else:
+        cut = (in_data.PRI_lep_eta < 0)
+        
+        for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
+            in_data.loc[cut, particle + '_eta'] = -in_data.loc[cut, particle + '_eta'] 
 
 
-def x_flip_event(in_data):
-    '''Flip event in x-axis such that tau is in positive x-direction'''
-    cut = (in_data.PRI_tau_phi < 0)
+def x_flip_event(in_data, cartesian=False):
+    '''Flip event in x-axis such that tau is in positive x|y-direction'''
+    if cartesian:
+        cut = (in_data.PRI_tau_py < 0)
     
-    for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
-        in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
+        for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
+            in_data.loc[cut, particle + '_py'] = -in_data.loc[cut, particle + '_py'] 
+    else:
+        cut = (in_data.PRI_tau_phi < 0)
+        
+        for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
+            in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
     
 
 def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=False):
@@ -102,12 +114,7 @@ def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=Fa
     if rotate:
         print('Setting lepton to phi = 0')
         rotate_event(in_data)
-    if flip_z:
-        print('Setting lepton positive z')
-        z_flip_event(in_data)
-    if flip_x:
-        print('Setting tau to positve x')
-        x_flip_event(in_data)
+    
     if cartesian:
         print("Converting to Cartesian coordinates")
         move_to_cartesian(in_data, 'PRI_tau', drop=True)
@@ -117,6 +124,13 @@ def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=Fa
         move_to_cartesian(in_data, 'PRI_met', z=False)
         
         in_data.drop(columns=["PRI_met_phi"], inplace=True)
+
+    if flip_z:
+        print('Setting lepton positive z')
+        z_flip_event(in_data, cartesian)
+    if flip_x:
+        print('Setting tau to positve x')
+        x_flip_event(in_data, cartesian)
         
     if rotate and not cartesian:
         in_data.drop(columns=["PRI_lep_phi"], inplace=True)
