@@ -13,7 +13,8 @@ from hepml_tools.general.pre_proc import get_pre_proc_pipes
 
 
 def import_data(data_path=Path("../Data/"),
-                rotate=False, cartesian=True, mode='OpenData',
+                rotate=False, flip_x=False, flip_z=False, cartesian=True,
+                mode='OpenData',
                 val_size=0.2, seed=None):
     '''Import and split data from CSV(s)'''
     if mode == 'OpenData':  # If using data from CERN Open Access
@@ -36,8 +37,8 @@ def import_data(data_path=Path("../Data/"),
         test = pandas.read_csv(data_path + 'test.csv')
         test.rename(index=str, columns={'PRI_met': 'PRI_met_pt'}, inplace=True)
 
-    convert_data(training_data, rotate, cartesian)
-    convert_data(test, rotate, cartesian)
+    convert_data(training_data, rotate, flip_x, flip_z, cartesian)
+    convert_data(test, rotate, flip_x, flip_z, cartesian)
 
     training_data['gen_target'] = 0
     training_data.loc[training_data.Label == 's', 'gen_target'] = 1
@@ -85,7 +86,7 @@ def x_flip_event(in_data):
         in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
     
 
-def convert_data(in_data, rotate=False, cartesian=True):
+def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=True):
     '''Pass data through conversions and drop uneeded columns'''
     in_data.replace([np.inf, -np.inf], np.nan, inplace=True)
     in_data.fillna(-999.0, inplace=True)
@@ -93,7 +94,9 @@ def convert_data(in_data, rotate=False, cartesian=True):
     
     if rotate:
         rotate_event(in_data)
+    if flip_z:
         z_flip_event(in_data)
+    if flip_x:
         x_flip_event(in_data)
     
     if cartesian:
@@ -173,10 +176,10 @@ def prepare_sample(in_data, mode, input_pipe, norm_weights, N, feats, data_path)
         save_fold(in_data.iloc[fold].copy(), i, input_pipe, out_file, norm_weights, mode, feats)
 
 
-def run_data_import(data_path, rotate, cartesian, mode, val_size, seed, n_folds):
+def run_data_import(data_path, rotate, flip_x, flip_z, cartesian, mode, val_size, seed, n_folds):
     '''Run through all the stages to save the data into files for training, validation, and testing'''
     # Get Data
-    data = import_data(data_path, rotate, cartesian, mode, val_size, seed)
+    data = import_data(data_path, rotate, flip_x, flip_z, cartesian, mode, val_size, seed)
 
     # Standardise and normalise
     input_pipe, _ = get_pre_proc_pipes(norm_in=True)
@@ -195,7 +198,9 @@ def run_data_import(data_path, rotate, cartesian, mode, val_size, seed, n_folds)
 if __name__ == '__main__':
     parser = optparse.OptionParser(usage=__doc__)
     parser.add_option("-d", "--data_path", dest="data_path", action="store", default="./data/", help="Data folder location")
-    parser.add_option("-r", "--rotate", dest="rotate", action="store", default=False, help="Rotate events to have common alignment")
+    parser.add_option("-r", "--rotate", dest="rotate", action="store", default=False, help="Rotate events in phi to have common alignment")
+    parser.add_option("-x", "--flipx", dest="flip_x", action="store", default=False, help="Flip events in x to have common alignment")
+    parser.add_option("-z", "--flipz", dest="flip_z", action="store", default=False, help="Flip events in z to have common alignment")
     parser.add_option("-c", "--cartesian", dest="cartesian", action="store", default=True, help="Convert to Cartesian system")
     parser.add_option("-m", "--mode", dest="mode", action="store", default="OpenData", help="Using open data or Kaggle data")
     parser.add_option("-v", "--val_size", dest="val_size", action="store", default=0.2, help="Fraction of data to use for validation")
@@ -203,5 +208,5 @@ if __name__ == '__main__':
     parser.add_option("-n", "--n_folds", dest="n_folds", action="store", default=10, help="Number of folds to split data")
     opts, args = parser.parse_args()
 
-    run_data_import(opts.data_path, opts.rotate, opts.cartesian, opts.mode, opts.val_size, opts.seed, opts.n_folds)
+    run_data_import(opts.data_path, opts.rotate, opts.flip_x, opts.flip_z, opts.cartesian, opts.mode, opts.val_size, opts.seed, opts.n_folds)
     
