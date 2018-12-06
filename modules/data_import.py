@@ -12,6 +12,13 @@ from hepml_tools.transformations.hep_proc import *
 from hepml_tools.general.pre_proc import get_pre_proc_pipes
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    else:
+        return v.lower() in ("yes", "true", "t", "1")
+
+
 def import_data(data_path=Path("../Data/"),
                 rotate=False, flip_x=False, flip_z=False, cartesian=True,
                 mode='OpenData',
@@ -86,20 +93,23 @@ def x_flip_event(in_data):
         in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
     
 
-def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=True):
+def convert_data(in_data, rotate=False, flip_x=False, flip_z=False, cartesian=False):
     '''Pass data through conversions and drop uneeded columns'''
     in_data.replace([np.inf, -np.inf], np.nan, inplace=True)
     in_data.fillna(-999.0, inplace=True)
     in_data.replace(-999.0, 0.0, inplace=True)
     
     if rotate:
+        print('Setting lepton to phi = 0')
         rotate_event(in_data)
     if flip_z:
+        print('Setting lepton positive z')
         z_flip_event(in_data)
     if flip_x:
+        print('Setting tau to positve x')
         x_flip_event(in_data)
-    
     if cartesian:
+        print("Converting to Cartesian coordinates")
         move_to_cartesian(in_data, 'PRI_tau', drop=True)
         move_to_cartesian(in_data, 'PRI_lep', drop=True)
         move_to_cartesian(in_data, 'PRI_jet_leading', drop=True)
@@ -208,5 +218,7 @@ if __name__ == '__main__':
     parser.add_option("-n", "--n_folds", dest="n_folds", action="store", default=10, help="Number of folds to split data")
     opts, args = parser.parse_args()
 
-    run_data_import(opts.data_path, opts.rotate, opts.flip_x, opts.flip_z, opts.cartesian, opts.mode, opts.val_size, opts.seed, opts.n_folds)
+    run_data_import(opts.data_path,
+                    str2bool(opts.rotate), str2bool(opts.flip_x), str2bool(opts.flip_z), str2bool(opts.cartesian),
+                    opts.mode, opts.val_size, opts.seed, opts.n_folds)
     
