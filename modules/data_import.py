@@ -95,9 +95,8 @@ def x_flip_event(in_data):
 
 def convert_data(in_data, rotate=False, flip_y=False, flip_z=False, cartesian=False):
     '''Pass data through conversions and drop uneeded columns'''
-    in_data.replace([np.inf, -np.inf], np.nan, inplace=True)
-    in_data.fillna(-999.0, inplace=True)
-    in_data.replace(-999.0, 0.0, inplace=True)
+    in_data.replace([np.inf, -np.inf, -999.0], np.nan, inplace=True)
+    #in_data.fillna(0.0, inplace=True)
     
     if rotate:
         print('Setting lepton to phi = 0')
@@ -132,6 +131,8 @@ def save_fold(in_data, n, input_pipe, out_file, norm_weights, mode, feats):
     grp = out_file.create_group('fold_' + str(n))
     
     X = input_pipe.transform(in_data[feats].values.astype('float32'))
+    #X = in_data[feats].values.astype('float32')
+
     inputs = grp.create_dataset("inputs", shape=X.shape, dtype='float32')
     inputs[...] = X
     
