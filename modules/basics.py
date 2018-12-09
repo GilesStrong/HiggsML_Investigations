@@ -20,9 +20,9 @@ sns.set_style("whitegrid")
 DATA_PATH = Path("../data/")
 
 
-def score_test_data(test_data, cut):
+def score_test_data(test_data, cut, pred_name='pred'):
     data = pandas.DataFrame()
-    data['pred_class'] = get_feature('pred', test_data)
+    data['pred_class'] = get_feature(pred_name, test_data)
     data['gen_weight'] = get_feature('weights', test_data)
     data['gen_target'] = get_feature('targets', test_data)
     data['private'] = get_feature('private', test_data)
