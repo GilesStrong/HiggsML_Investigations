@@ -61,10 +61,10 @@ def export_test_to_csv(cut, name, data_path=DATA_PATH):
     data.to_csv(data_path + name + '_test.csv', columns=['EventId', 'RankOrder', 'Class'], index=False)
 
 
-def convert_to_df(datafile, n_load=-1, set_fold=-1):
+def convert_to_df(datafile, pred_name='pred', n_load=-1, set_fold=-1):
     data = pandas.DataFrame()
     data['gen_target'] = get_feature('targets', datafile, n_load, set_fold=set_fold)
     data['gen_weight'] = get_feature('weights', datafile, n_load, set_fold=set_fold)
-    data['pred_class'] = get_feature('pred', datafile, n_load, set_fold=set_fold)
+    data['pred_class'] = get_feature(pred_name, datafile, n_load, set_fold=set_fold)
     print(len(data), "candidates loaded")
     return data
