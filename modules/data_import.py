@@ -65,11 +65,6 @@ def import_data(data_path=Path("../Data/"),
 
 def rotate_event(in_data):
     '''Rotate event in phi such that lepton is at phi == 0'''
-    # in_data['PRI_tau_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_tau_phi'])
-    # in_data['PRI_jet_leading_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_jet_leading_phi'])
-    # in_data['PRI_jet_subleading_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_jet_subleading_phi'])
-    # in_data['PRI_met_phi'] = delta_phi(in_data['PRI_lep_phi'], in_data['PRI_met_phi'])
-    # in_data['PRI_lep_phi'] = 0
     in_data['PRI_tau_phi'] = in_data.apply(lambda row: delta_phi(row['PRI_lep_phi'], row['PRI_tau_phi']), axis=1)
     in_data['PRI_jet_leading_phi'] = in_data.apply(lambda row: delta_phi(row['PRI_lep_phi'], row['PRI_jet_leading_phi']), axis=1)
     in_data['PRI_jet_subleading_phi'] = in_data.apply(lambda row: delta_phi(row['PRI_lep_phi'], row['PRI_jet_subleading_phi']), axis=1)
@@ -79,18 +74,32 @@ def rotate_event(in_data):
 
 def z_flip_event(in_data):
     '''Flip event in z-axis such that primary lepton is in positive z-direction'''
-    cut = (in_data.PRI_lep_eta < 0)
+    if 'PRI_lep_eta' in in_data.columns:
+        cut = (in_data.PRI_lep_eta < 0)
+        
+        for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
+            in_data.loc[cut, particle + '_eta'] = -in_data.loc[cut, particle + '_eta'] 
     
-    for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
-        in_data.loc[cut, particle + '_eta'] = -in_data.loc[cut, particle + '_eta'] 
+    else:
+        cut = (in_data.PRI_lep_pz < 0)
+        
+        for particle in ['PRI_lep', 'PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading']:
+            in_data.loc[cut, particle + '_pz'] = -in_data.loc[cut, particle + '_pz'] 
 
 
-def x_flip_event(in_data):
+def y_flip_event(in_data):
     '''Flip event in x-axis such that tau has a higher py than the lepton'''
-    cut = (in_data.PRI_tau_phi < 0)
+    if 'PRI_tau_phi' in in_data.columns:
+        cut = (in_data.PRI_tau_phi < 0)
+        
+        for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
+            in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
     
-    for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
-        in_data.loc[cut, particle + '_phi'] = -in_data.loc[cut, particle + '_phi'] 
+    else:
+        cut = (in_data.PRI_tau_py < 0)
+        
+        for particle in ['PRI_tau', 'PRI_jet_leading', 'PRI_jet_subleading', 'PRI_met']:
+            in_data.loc[cut, particle + '_py'] = -in_data.loc[cut, particle + '_py'] 
     
 
 def convert_data(in_data, rotate=False, flip_y=False, flip_z=False, cartesian=False):
@@ -103,7 +112,7 @@ def convert_data(in_data, rotate=False, flip_y=False, flip_z=False, cartesian=Fa
         
         if flip_y:
             print('Setting tau to positve y')
-            x_flip_event(in_data)
+            y_flip_event(in_data)
 
     if flip_z:
         print('Setting lepton positive z')
@@ -130,7 +139,8 @@ def save_fold(in_data, n, input_pipe, out_file, norm_weights, mode, feats):
     grp = out_file.create_group('fold_' + str(n))
     
     X = input_pipe.transform(in_data[feats].values.astype('float32'))
-
+    # X = in_data[feats].values.astype('float32')
+     
     inputs = grp.create_dataset("inputs", shape=X.shape, dtype='float32')
     inputs[...] = X
     
