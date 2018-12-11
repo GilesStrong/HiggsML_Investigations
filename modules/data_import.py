@@ -52,7 +52,11 @@ def import_data(data_path=Path("../Data/"),
     training_data.drop(columns=['Label'], inplace=True)
     training_data['gen_weight_original'] = training_data['gen_weight']  # gen_weight might be renormalised
 
-    train_feats = [x for x in training_data.columns if 'gen' not in x and x != 'EventId' and 'kaggle' not in x.lower()]
+    # train_feats = [x for x in training_data.columns if 'gen' not in x and x != 'EventId' and 'kaggle' not in x.lower()]
+    vec_feats = [x for x in training_data.columns if '_px' in x or '_py' in x or '_pz' in x]
+    extra_feats = [x for x in training_data.columns if x not in vec_feats and 'gen' not in x and x != 'EventId' and 'kaggle' not in x.lower()]
+    train_feats = extra_feats + vec_feats
+
     train, val = train_test_split(training_data, test_size=val_size, random_state=seed)
 
     print('Training on {} datapoints and validating on {}, using {} feats:\n{}'.format(len(train), len(val), len(train_feats), [x for x in train_feats]))
@@ -60,7 +64,7 @@ def import_data(data_path=Path("../Data/"),
     return {'train': train[train_feats + ['gen_target', 'gen_weight', 'gen_weight_original']], 
             'val': val[train_feats + ['gen_target', 'gen_weight', 'gen_weight_original']],
             'test': test,
-            'feats': train_feats}
+            'feats': {'extra': extra_feats, 'vec': vec_feats}}
 
 
 def rotate_event(in_data):
@@ -138,8 +142,8 @@ def save_fold(in_data, n, input_pipe, out_file, norm_weights, mode, feats):
     '''Save fold into hdf5 file'''
     grp = out_file.create_group('fold_' + str(n))
     
-    X = input_pipe.transform(in_data[feats].values.astype('float32'))
-    # X = in_data[feats].values.astype('float32')
+    X = np.hstack((input_pipe['extra'].transform(in_data[feats['extra']].values.astype('float32')),
+                  input_pipe['vec'].transform(in_data[feats['vec']].values.astype('float32'))))
      
     inputs = grp.create_dataset("inputs", shape=X.shape, dtype='float32')
     inputs[...] = X
@@ -204,10 +208,16 @@ def run_data_import(data_path, rotate, flip_y, flip_z, cartesian, mode, val_size
     data = import_data(data_path, rotate, flip_y, flip_z, cartesian, mode, val_size, seed)
 
     # Standardise and normalise
-    input_pipe, _ = get_pre_proc_pipes(norm_in=True)
-    input_pipe.fit(data['train'][data['feats']].values.astype('float32'))
-    with open(data_path + 'input_pipe.pkl', 'wb') as fout:
-        pickle.dump(input_pipe, fout)
+    input_pipe = {}
+    input_pipe['extra'], _ = get_pre_proc_pipes(norm_in=True)
+    input_pipe['extra'].fit(data['train'][data['feats']['extra']].values.astype('float32'))
+
+    input_pipe['vec'], _ = get_pre_proc_pipes(norm_in=True, with_mean=False)
+    input_pipe['vec'].fit(data['train'][data['feats']['vec']].values.astype('float32'))
+    
+    for pipe in input_pipe:
+        with open(data_path + f'input_pipe_{pipe}.pkl', 'wb') as fout:
+            pickle.dump(input_pipe[pipe], fout)
 
     prepare_sample(data['train'], 'train', input_pipe, True, n_folds, data['feats'], data_path)
     prepare_sample(data['val'], 'val', input_pipe, False, n_folds, data['feats'], data_path)
