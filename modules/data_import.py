@@ -238,7 +238,7 @@ if __name__ == '__main__':
     parser.add_option("-v", "--val_size", dest="val_size", action="store", default=0.2, help="Fraction of data to use for validation")
     parser.add_option("-s", "--seed", dest="seed", action="store", default=1337, help="Seed for train/val split")
     parser.add_option("-n", "--n_folds", dest="n_folds", action="store", default=10, help="Number of folds to split data")
-    parser.add_option("-t", "--zero_vec", dest="vec_mean", action="store", default=True, help="Set vector means to zero")
+    parser.add_option("-t", "--zero_vec", dest="zero_vec", action="store", default=True, help="Set vector means to zero")
     opts, args = parser.parse_args()
 
     run_data_import(opts.data_path,
